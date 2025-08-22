@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('anomaly_detection_title', lang) }} - {{ get_text('company_risk_analysis', lang) }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>{{ get_text('anomaly_detection_title', lang) }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        {{ get_text('anomaly_description', lang) }}
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>{{ get_text('method_used', lang) }}</strong> {{ get_text('iqr_method', lang) }}
+                    </div>
+                    
+                    {% if features %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check me-2"></i>
+                            <strong>{{ get_text('available_features', lang) }}</strong> {{ features|length }} {{ get_text('non_binary_features', lang) }}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No suitable features available for anomaly detection. Please ensure you have numeric data uploaded.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if features %}
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>{{ get_text('feature_selection', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="featureSelect" class="form-label">{{ get_text('select_feature', lang) }}</label>
+                        <select class="form-select" id="featureSelect">
+                            <option value="">{{ get_text('choose_feature', lang) }}</option>
+                            {% for feature in features %}
+                                <option value="{{ feature }}">{{ feature }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary w-100" onclick="detectAnomalies()" id="detectBtn" disabled>
+                        <i class="fas fa-search me-2"></i>{{ get_text('detect_anomalies', lang) }}
+                    </button>
+                    
+                    <hr>
+                    
+                    <div class="small text-muted">
+                        <h6>{{ get_text('how_it_works', lang) }}</h6>
+                        <ol class="mb-0">
+                            <li>{{ get_text('select_numeric_feature', lang) }}</li>
+                            <li>{{ get_text('click_detect', lang) }}</li>
+                            <li>{{ get_text('review_results', lang) }}</li>
+                            <li>{{ get_text('identify_risks', lang) }}</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>{{ get_text('analysis_results', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <div id="analysisContent">
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                            <h5>{{ get_text('select_feature_begin', lang) }}</h5>
+                            <p>{{ get_text('choose_feature_description', lang) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomaly Results Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>{{ get_text('detailed_results', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <div id="detailedResults">
+                        <p class="text-muted text-center">{{ get_text('detailed_anomaly_results', lang) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistical Summary Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>{{ get_text('statistical_summary', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <div id="statisticalSummary">
+                        <p class="text-muted text-center">{{ get_text('statistical_summary_description', lang) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="analysisModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Analyzing Data...</h5>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Performing statistical analysis and identifying anomalies...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Enable/disable detect button based on feature selection
+    $('#featureSelect').change(function() {
+        const selectedFeature = $(this).val();
+        $('#detectBtn').prop('disabled', !selectedFeature);
+    });
+});
+
+function detectAnomalies() {
+    const selectedFeature = $('#featureSelect').val();
+    
+    if (!selectedFeature) {
+        alert('Please select a feature first.');
+        return;
+    }
+    
+    // Show loading modal
+    $('#analysisModal').modal('show');
+    
+    // Perform anomaly detection
+    $.get(`/detect_anomalies/${selectedFeature}`, function(data) {
+        $('#analysisModal').modal('hide');
+        
+        if (data.error) {
+            alert('Error during analysis: ' + data.error);
+            return;
+        }
+        
+        // Display results
+        displayAnalysisResults(data);
+        displayDetailedResults(data);
+        displayStatisticalSummary(data);
+        
+    }).fail(function() {
+        $('#analysisModal').modal('hide');
+        alert('Error performing anomaly detection. Please try again.');
+    });
+}
+
+function displayAnalysisResults(data) {
+    const contentDiv = document.getElementById('analysisContent');
+    
+    const anomalyPercentage = data.anomaly_percentage.toFixed(2);
+    const anomalyCount = data.anomaly_count;
+    const totalRecords = data.total_records;
+    
+    let severityClass = 'success';
+    let severityIcon = 'check-circle';
+    let severityText = 'Low';
+    
+    if (anomalyPercentage > 10) {
+        severityClass = 'danger';
+        severityIcon = 'exclamation-triangle';
+        severityText = 'High';
+    } else if (anomalyPercentage > 5) {
+        severityClass = 'warning';
+        severityIcon = 'exclamation-circle';
+        severityText = 'Medium';
+    }
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-3 text-center mb-3">
+                <div class="stats-card">
+                    <h3>${totalRecords}</h3>
+                    <p>Total Records</p>
+                </div>
+            </div>
+            <div class="col-md-3 text-center mb-3">
+                <div class="stats-card">
+                    <h3>${anomalyCount}</h3>
+                    <p>Anomalies Found</p>
+                </div>
+            </div>
+            <div class="col-md-3 text-center mb-3">
+                <div class="stats-card">
+                    <h3>${anomalyPercentage}%</h3>
+                    <p>Anomaly Rate</p>
+                </div>
+            </div>
+            <div class="col-md-3 text-center mb-3">
+                <div class="stats-card">
+                    <h3>
+                        <i class="fas fa-${severityIcon}"></i>
+                    </h3>
+                    <p>Risk Level: ${severityText}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-${severityClass} mt-3">
+            <h6><i class="fas fa-${severityIcon} me-2"></i>Analysis Complete</h6>
+            <p class="mb-0">
+                Found <strong>${anomalyCount}</strong> anomalies out of <strong>${totalRecords}</strong> records 
+                (${anomalyPercentage}% of the data). This indicates a <strong>${severityText.toLowerCase()}</strong> level of data variance.
+            </p>
+        </div>
+    `;
+    
+    contentDiv.innerHTML = html;
+}
+
+function displayDetailedResults(data) {
+    const resultsDiv = document.getElementById('detailedResults');
+    
+    if (data.anomalies.length === 0) {
+        resultsDiv.innerHTML = '<p class="text-success text-center">No anomalies found in this feature.</p>';
+        return;
+    }
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Company Index</th>
+                        <th>Feature Value</th>
+                        <th>Deviation</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.anomalies.forEach(function(anomaly, index) {
+        const featureValue = anomaly[data.feature_name];
+        let deviation = '';
+        let status = '';
+        
+        if (featureValue < data.statistics.lower_bound) {
+            deviation = `Below lower bound (${data.statistics.lower_bound.toFixed(2)})`;
+            status = '<span class="badge bg-danger">Below Range</span>';
+        } else {
+            deviation = `Above upper bound (${data.statistics.upper_bound.toFixed(2)})`;
+            status = '<span class="badge bg-warning">Above Range</span>';
+        }
+        
+        html += `
+            <tr>
+                <td>${anomaly.name || `Row ${index + 1}`}</td>
+                <td><strong>${featureValue}</strong></td>
+                <td><small class="text-muted">${deviation}</small></td>
+                <td>${status}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <p class="text-muted small">
+                <i class="fas fa-info-circle me-1"></i>
+                These companies show values that are statistically significant outliers and may require further investigation.
+            </p>
+        </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
+}
+
+function displayStatisticalSummary(data) {
+    const summaryDiv = document.getElementById('statisticalSummary');
+    
+    const stats = data.statistics;
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Quartile Information:</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Q1 (25th percentile):</strong> ${stats.Q1.toFixed(2)}</li>
+                    <li><strong>Q3 (75th percentile):</strong> ${stats.Q3.toFixed(2)}</li>
+                    <li><strong>IQR (Interquartile Range):</strong> ${stats.IQR.toFixed(2)}</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Boundary Values:</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Lower Bound:</strong> ${stats.lower_bound.toFixed(2)}</li>
+                    <li><strong>Upper Bound:</strong> ${stats.upper_bound.toFixed(2)}</li>
+                    <li><strong>Range:</strong> ${(stats.upper_bound - stats.lower_bound).toFixed(2)}</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <div class="alert alert-light">
+                <h6><i class="fas fa-lightbulb me-2"></i>Interpretation:</h6>
+                <p class="mb-2">
+                    Values below <strong>${stats.lower_bound.toFixed(2)}</strong> or above <strong>${stats.upper_bound.toFixed(2)}</strong> 
+                    are considered statistical outliers. These may indicate:
+                </p>
+                <ul class="mb-0">
+                    <li>Data entry errors or quality issues</li>
+                    <li>Legitimate extreme values that require attention</li>
+                    <li>Potential risk factors or unusual business conditions</li>
+                    <li>Need for data validation or investigation</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    summaryDiv.innerHTML = html;
+}
+</script>
+{% endblock %}

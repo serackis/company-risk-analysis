@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('upload_company_data', lang) }} - {{ get_text('company_risk_analysis', lang) }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-upload me-2"></i>{{ get_text('upload_company_data', lang) }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                                <div class="mb-3">
+                                    <label for="file" class="form-label">{{ get_text('select_data_file', lang) }}</label>
+                                    <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.csv" required>
+                                    <div class="form-text">
+                                        {{ get_text('supported_formats', lang) }}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">{{ get_text('file_requirements', lang) }}</label>
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-check text-success me-2"></i>{{ get_text('companies_in_rows', lang) }}</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>{{ get_text('features_in_columns', lang) }}</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>{{ get_text('max_file_size', lang) }}</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>{{ get_text('first_row_headers', lang) }}</li>
+                                    </ul>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn">
+                                    <i class="fas fa-upload me-2"></i>{{ get_text('upload_and_analyze', lang) }}
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>{{ get_text('upload_tips', lang) }}</h6>
+                                    <ul class="list-unstyled small">
+                                        <li class="mb-2">• {{ get_text('ensure_data_formatted', lang) }}</li>
+                                        <li class="mb-2">• {{ get_text('check_column_headers', lang) }}</li>
+                                        <li class="mb-2">• {{ get_text('remove_formatting', lang) }}</li>
+                                        <li class="mb-2">• {{ get_text('verify_data_types', lang) }}</li>
+                                    </ul>
+                                    
+                                    <hr>
+                                    
+                                    <h6 class="card-title"><i class="fas fa-exclamation-triangle me-2"></i>{{ get_text('common_issues', lang) }}</h6>
+                                    <ul class="list-unstyled small">
+                                        <li class="mb-2">• {{ get_text('mixed_data_types', lang) }}</li>
+                                        <li class="mb-2">• {{ get_text('special_characters', lang) }}</li>
+                                        <li class="mb-2">• {{ get_text('empty_rows_columns', lang) }}</li>
+                                        <li class="mb-2">• {{ get_text('large_files', lang) }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Data Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>{{ get_text('sample_data_structure', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Company Name</th>
+                                    <th>Revenue</th>
+                                    <th>Employees</th>
+                                    <th>Industry</th>
+                                    <th>Risk Score</th>
+                                    <th>Location</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Company A</td>
+                                    <td>1000000</td>
+                                    <td>50</td>
+                                    <td>Technology</td>
+                                    <td>0.3</td>
+                                    <td>Vilnius</td>
+                                </tr>
+                                <tr>
+                                    <td>Company B</td>
+                                    <td>2500000</td>
+                                    <td>120</td>
+                                    <td>Manufacturing</td>
+                                    <td>0.7</td>
+                                    <td>Kaunas</td>
+                                </tr>
+                                <tr>
+                                    <td>Company C</td>
+                                    <td>500000</td>
+                                    <td>25</td>
+                                    <td>Services</td>
+                                    <td>0.2</td>
+                                    <td>Klaipeda</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mt-2">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        {{ get_text('example_structure', lang) }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Progress Modal -->
+<div class="modal fade" id="uploadProgressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Processing Data...</h5>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <p class="text-center" id="progressText">Initializing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#uploadForm').on('submit', function(e) {
+        const fileInput = $('#file')[0];
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a file to upload.');
+            return false;
+        }
+        
+        // Show progress modal
+        $('#uploadProgressModal').modal('show');
+        
+        // Simulate progress
+        let progress = 0;
+        const progressBar = $('.progress-bar');
+        const progressText = $('#progressText');
+        
+        const progressInterval = setInterval(function() {
+            progress += Math.random() * 20;
+            if (progress > 90) progress = 90;
+            
+            progressBar.css('width', progress + '%');
+            
+            if (progress < 30) {
+                progressText.text('Reading file...');
+            } else if (progress < 60) {
+                progressText.text('Analyzing data structure...');
+            } else if (progress < 90) {
+                progressText.text('Processing data...');
+            }
+        }, 200);
+        
+        // Form will submit normally, progress will continue until redirect
+        setTimeout(function() {
+            clearInterval(progressInterval);
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

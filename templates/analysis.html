@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('data_analysis', lang) }} - {{ get_text('company_risk_analysis', lang) }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>{{ get_text('data_overview', lang) }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="stats-card">
+                                <h3>{{ total_companies }}</h3>
+                                <p>{{ get_text('total_companies', lang) }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="stats-card">
+                                <h3>{{ total_features }}</h3>
+                                <p>{{ get_text('total_features', lang) }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="stats-card">
+                                <h3>{{ "%.1f"|format(overall_completeness) }}%</h3>
+                                <p>{{ get_text('overall_completeness', lang) }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="stats-card">
+                                <h3>{{ data_groups|length }}</h3>
+                                <p>{{ get_text('data_groups', lang) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>{{ get_text('feature_types', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{{ get_text('numeric_features', lang) }} ({{ numeric_features|length }})</h6>
+                    <div class="mb-3">
+                        {% for feature in numeric_features[:10] %}
+                            <span class="badge bg-primary me-1 mb-1">{{ feature }}</span>
+                        {% endfor %}
+                        {% if numeric_features|length > 10 %}
+                            <span class="badge bg-secondary">+{{ numeric_features|length - 10 }} more</span>
+                        {% endif %}
+                    </div>
+                    
+                    <h6>{{ get_text('categorical_features', lang) }} ({{ categorical_features|length }})</h6>
+                    <div class="mb-3">
+                        {% for feature in categorical_features[:10] %}
+                            <span class="badge bg-success me-1 mb-1">{{ feature }}</span>
+                        {% endfor %}
+                        {% if categorical_features|length > 10 %}
+                            <span class="badge bg-secondary">+{{ categorical_features|length - 10 }} more</span>
+                        {% endif %}
+                    </div>
+                    
+                    <h6>{{ get_text('binary_features', lang) }} ({{ binary_features|length }})</h6>
+                    <div class="mb-3">
+                        {% for feature in binary_features[:10] %}
+                            <span class="badge bg-warning me-1 mb-1">{{ feature }}</span>
+                        {% endfor %}
+                        {% if binary_features|length > 10 %}
+                            <span class="badge bg-secondary">+{{ binary_features|length - 10 }} more</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>{{ get_text('completeness_distribution', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="completenessChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sitemap me-2"></i>{{ get_text('company_groups', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    {% if data_groups %}
+                        <div class="row">
+                            {% for group_name, group_data in data_groups.items() %}
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                {% if group_name == 'complete' %}
+                                                    <i class="fas fa-check-circle text-success me-2"></i>{{ get_text('complete_data', lang) }}
+                                                {% elif group_name == 'high_completeness' %}
+                                                    <i class="fas fa-check text-primary me-2"></i>{{ get_text('high_completeness', lang) }}
+                                                {% elif group_name == 'medium_completeness' %}
+                                                    <i class="fas fa-minus text-warning me-2"></i>{{ get_text('medium_completeness', lang) }}
+                                                {% else %}
+                                                    <i class="fas fa-times text-danger me-2"></i>{{ get_text('low_completeness', lang) }}
+                                                {% endif %}
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <span class="h4 mb-0">{{ group_data|length }}</span>
+                                                <span class="text-muted">companies</span>
+                                            </div>
+                                            
+                                            {% if group_name == 'complete' %}
+                                                <p class="text-success small mb-2">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    {{ get_text('complete_description', lang) }}
+                                                </p>
+                                            {% elif group_name == 'high_completeness' %}
+                                                <p class="text-primary small mb-2">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    {{ get_text('high_description', lang) }}
+                                                </p>
+                                            {% elif group_name == 'medium_completeness' %}
+                                                <p class="text-warning small mb-2">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    {{ get_text('medium_description', lang) }}
+                                                </p>
+                                            {% else %}
+                                                <p class="text-danger small mb-2">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    {{ get_text('low_description', lang) }}
+                                                </p>
+                                            {% endif %}
+                                            
+                                            <div class="mt-3">
+                                                <a href="{{ url_for('clustering') }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-sitemap me-1"></i>{{ get_text('cluster_this_group', lang) }}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                            <h5>No Data Groups Available</h5>
+                            <p class="text-muted">Please upload data to see company groupings.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Preview Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>{{ get_text('data_preview', lang) }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <button class="btn btn-outline-secondary" id="loadPreviewBtn">
+                            <i class="fas fa-eye me-2"></i>{{ get_text('load_data_preview', lang) }}
+                        </button>
+                    </div>
+                    <div id="previewContent" class="mt-3" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped" id="previewTable">
+                                <thead class="table-dark">
+                                    <!-- Headers will be loaded dynamically -->
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Load data preview
+    $('#loadPreviewBtn').click(function() {
+        $.get('/data_preview', function(data) {
+            if (data.error) {
+                alert('Error loading preview: ' + data.error);
+                return;
+            }
+            
+            // Show preview content
+            $('#previewContent').show();
+            $('#loadPreviewBtn').hide();
+            
+            // Build table headers
+            let headerRow = '<tr>';
+            data.columns_info.forEach(function(col) {
+                headerRow += `<th title="Type: ${col.dtype}, Non-null: ${col.non_null_count}, Null: ${col.null_count}">${col.name}</th>`;
+            });
+            headerRow += '</tr>';
+            $('#previewTable thead').html(headerRow);
+            
+            // Build table body
+            let tableBody = '';
+            data.preview_data.forEach(function(row) {
+                let tableRow = '<tr>';
+                data.columns_info.forEach(function(col) {
+                    let cellValue = row[col.name];
+                    if (cellValue === null || cellValue === undefined) {
+                        cellValue = '<span class="text-muted">N/A</span>';
+                    }
+                    tableRow += `<td>${cellValue}</td>`;
+                });
+                tableRow += '</tr>';
+                tableBody += tableRow;
+            });
+            $('#previewTable tbody').html(tableBody);
+        });
+    });
+    
+    // Create completeness chart
+    const ctx = document.getElementById('completenessChart').getContext('2d');
+    const completenessChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                {% for group_name, group_data in data_groups.items() %}
+                    '{{ group_name.replace('_', ' ').title() }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for group_name, group_data in data_groups.items() %}
+                        {{ group_data|length }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#059669',  // Complete - Green
+                    '#1e3a8a',  // High - Blue
+                    '#d97706',  // Medium - Yellow
+                    '#dc2626'   // Low - Red
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

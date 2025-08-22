@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('company_risk_analysis', lang) }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Hero Section -->
+    <div class="jumbotron text-center">
+        <h1 class="display-4">{{ get_text('company_risk_analysis', lang) }}</h1>
+        <p class="lead">{{ get_text('comprehensive_web_based', lang) }}</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-upload me-2"></i>{{ get_text('getting_started', lang) }}
+        </a>
+    </div>
+
+    <!-- Features Section -->
+    <div class="section-header">
+        <h2>{{ get_text('system_features', lang) }}</h2>
+    </div>
+    
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-upload fa-3x text-primary mb-3"></i>
+                    <h4>{{ get_text('data_upload', lang) }}</h4>
+                    <p>{{ get_text('multi_format_support', lang) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-bar fa-3x text-primary mb-3"></i>
+                    <h4>{{ get_text('data_analysis', lang) }}</h4>
+                    <p>{{ get_text('automatic_analysis', lang) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-sitemap fa-3x text-primary mb-3"></i>
+                    <h4>{{ get_text('company_clustering', lang) }}</h4>
+                    <p>{{ get_text('advanced_clustering', lang) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-primary mb-3"></i>
+                    <h4>{{ get_text('anomaly_detection_title', lang) }}</h4>
+                    <p>{{ get_text('statistical_detection', lang) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Getting Started Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-play-circle me-2"></i>{{ get_text('getting_started', lang) }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ol class="list-group list-group-numbered">
+                                <li class="list-group-item">{{ get_text('upload_company_data_step', lang) }}</li>
+                                <li class="list-group-item">{{ get_text('review_analysis', lang) }}</li>
+                                <li class="list-group-item">{{ get_text('explore_groupings', lang) }}</li>
+                                <li class="list-group-item">{{ get_text('perform_clustering_step', lang) }}</li>
+                                <li class="list-group-item">{{ get_text('identify_anomalies', lang) }}</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>{{ get_text('data_requirements', lang) }}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li><strong>{{ get_text('supported_formats_title', lang) }}</strong> {{ get_text('microsoft_excel', lang) }}, {{ get_text('comma_separated', lang) }}</li>
+                                        <li><strong>{{ get_text('data_structure_title', lang) }}</strong> {{ get_text('companies_as_rows', lang) }}, {{ get_text('features_as_columns', lang) }}</li>
+                                        <li><strong>{{ get_text('data_requirements', lang) }}:</strong> {{ get_text('numeric_categorical', lang) }}</li>
+                                        <li><strong>{{ get_text('data_requirements', lang) }}:</strong> {{ get_text('missing_values_handled', lang) }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

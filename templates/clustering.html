@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('company_clustering', lang) }} - {{ get_text('company_risk_analysis', lang) }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-sitemap me-2"></i>{{ get_text('clustering_analysis', lang) }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        {{ get_text('clustering_description', lang) }}
+                    </p>
+                    
+                    {% if data_groups %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>{{ get_text('available_groups', lang) }}</strong> 
+                            {% for group_name, group_data in data_groups.items() %}
+                                <span class="badge bg-primary me-1">{{ group_name.replace('_', ' ').title() }} ({{ group_data|length }} companies)</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No data groups available. Please upload data first and analyze it.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if data_groups %}
+<div class="row">
+    {% for group_name, group_data in data_groups.items() %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        {% if group_name == 'complete' %}
+                            <i class="fas fa-check-circle text-success me-2"></i>{{ get_text('complete_data', lang) }}
+                        {% elif group_name == 'high_completeness' %}
+                            <i class="fas fa-check text-primary me-2"></i>{{ get_text('high_completeness', lang) }}
+                        {% elif group_name == 'medium_completeness' %}
+                            <i class="fas fa-minus text-warning me-2"></i>{{ get_text('medium_completeness', lang) }}
+                        {% else %}
+                            <i class="fas fa-times text-danger me-2"></i>{{ get_text('low_completeness', lang) }}
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <strong>Companies:</strong> {{ group_data|length }}
+                        </div>
+                        <div class="col-6">
+                            <strong>Features:</strong> {{ group_data.columns|length }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="clusters_{{ group_name }}" class="form-label">{{ get_text('number_of_clusters', lang) }}</label>
+                        <select class="form-select form-select-sm" id="clusters_{{ group_name }}">
+                            <option value="2">2 Clusters</option>
+                            <option value="3" selected>3 Clusters</option>
+                            <option value="4">4 Clusters</option>
+                            <option value="5">5 Clusters</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-sm w-100" onclick="performClustering('{{ group_name }}')">
+                        <i class="fas fa-sitemap me-2"></i>{{ get_text('perform_clustering', lang) }}
+                    </button>
+                    
+                    <div id="clustering_results_{{ group_name }}" class="mt-3" style="display: none;">
+                        <!-- Results will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Clustering Results Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>{{ get_text('clustering_results', lang) }}</h5>
+            </div>
+            <div class="card-body">
+                <div id="overall_results">
+                    <p class="text-muted text-center">Perform clustering on any group to see results here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cluster Visualization Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>{{ get_text('cluster_visualizations', lang) }}</h5>
+            </div>
+            <div class="card-body">
+                <div id="cluster_charts">
+                    <p class="text-muted text-center">Clustering results will be displayed here with interactive charts.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Loading Modal -->
+<div class="modal fade" id="clusteringModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Performing Clustering...</h5>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Analyzing company data and creating clusters...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let clusteringResults = {};
+
+function performClustering(groupName) {
+    const nClusters = document.getElementById(`clusters_${groupName}`).value;
+    
+    // Show loading modal
+    $('#clusteringModal').modal('show');
+    
+    // Perform clustering
+    $.get(`/cluster_group/${groupName}?n_clusters=${nClusters}`, function(data) {
+        $('#clusteringModal').modal('hide');
+        
+        if (data.error) {
+            alert('Error during clustering: ' + data.error);
+            return;
+        }
+        
+        // Store results
+        clusteringResults[groupName] = data;
+        
+        // Display results for this group
+        displayGroupResults(groupName, data);
+        
+        // Update overall results
+        updateOverallResults();
+        
+        // Create visualizations
+        createClusterCharts();
+    }).fail(function() {
+        $('#clusteringModal').modal('hide');
+        alert('Error performing clustering. Please try again.');
+    });
+}
+
+function displayGroupResults(groupName, data) {
+    const resultsDiv = document.getElementById(`clustering_results_${groupName}`);
+    
+    let html = `
+        <div class="alert alert-success">
+            <h6><i class="fas fa-check me-2"></i>Clustering Complete!</h6>
+            <p class="mb-2"><strong>Features used:</strong> ${data.features_used.join(', ')}</p>
+            <p class="mb-0"><strong>Total companies:</strong> ${data.total_companies}</p>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cluster ID</th>
+                        <th>Company Count</th>
+                        <th>Companies</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.cluster_summary.forEach(function(cluster) {
+        html += `
+            <tr>
+                <td><span class="badge bg-primary">Cluster ${cluster.cluster_id}</span></td>
+                <td>${cluster.company_count}</td>
+                <td>
+                    <small class="text-muted">
+                        ${cluster.companies.slice(0, 5).join(', ')}
+                        ${cluster.companies.length > 5 ? `... (+${cluster.companies.length - 5} more)` : ''}
+                    </small>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+}
+
+function updateOverallResults() {
+    const overallDiv = document.getElementById('overall_results');
+    
+    if (Object.keys(clusteringResults).length === 0) {
+        overallDiv.innerHTML = '<p class="text-muted text-center">Perform clustering on any group to see results here.</p>';
+        return;
+    }
+    
+    let html = '<div class="row">';
+    
+    Object.keys(clusteringResults).forEach(function(groupName) {
+        const data = clusteringResults[groupName];
+        const totalClusters = data.cluster_summary.length;
+        
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card border">
+                    <div class="card-header">
+                        <h6 class="mb-0">${groupName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Total Companies:</strong> ${data.total_companies}</p>
+                        <p><strong>Clusters Created:</strong> ${totalClusters}</p>
+                        <p><strong>Features Used:</strong> ${data.features_used.length}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    overallDiv.innerHTML = html;
+}
+
+function createClusterCharts() {
+    const chartsDiv = document.getElementById('cluster_charts');
+    
+    if (Object.keys(clusteringResults).length === 0) {
+        chartsDiv.innerHTML = '<p class="text-muted text-center">Clustering results will be displayed here with interactive charts.</p>';
+        return;
+    }
+    
+    let html = '';
+    
+    Object.keys(clusteringResults).forEach(function(groupName) {
+        const data = clusteringResults[groupName];
+        
+        html += `
+            <div class="mb-4">
+                <h6>${groupName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} - Cluster Distribution</h6>
+                <canvas id="chart_${groupName}" width="400" height="200"></canvas>
+            </div>
+        `;
+    });
+    
+    chartsDiv.innerHTML = html;
+    
+    // Create charts after DOM is updated
+    setTimeout(function() {
+        Object.keys(clusteringResults).forEach(function(groupName) {
+            createChart(groupName, clusteringResults[groupName]);
+        });
+    }, 100);
+}
+
+function createChart(groupName, data) {
+    const ctx = document.getElementById(`chart_${groupName}`);
+    if (!ctx) return;
+    
+    const chartData = {
+        labels: data.cluster_summary.map(c => `Cluster ${c.cluster_id}`),
+        datasets: [{
+            data: data.cluster_summary.map(c => c.company_count),
+            backgroundColor: [
+                '#1e3a8a', '#059669', '#f59e0b', '#0891b2', '#dc2626',
+                '#7c3aed', '#ec4899', '#10b981', '#f97316', '#06b6d4'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return `${context.label}: ${context.parsed} companies (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
