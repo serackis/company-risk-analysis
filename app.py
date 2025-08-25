@@ -27,18 +27,44 @@ data_groups = None
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'xlsx', 'csv'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls', 'csv'}
 
 def load_data(file_path):
     """Load data from Excel or CSV file"""
     try:
         if file_path.endswith('.xlsx'):
-            df = pd.read_excel(file_path)
+            # Try different Excel engines for better compatibility
+            try:
+                df = pd.read_excel(file_path, engine='openpyxl')
+            except Exception as e1:
+                try:
+                    df = pd.read_excel(file_path, engine='xlrd')
+                except Exception as e2:
+                    # Last resort: try without specifying engine
+                    df = pd.read_excel(file_path)
+        elif file_path.endswith('.xls'):
+            # Handle older Excel format
+            df = pd.read_excel(file_path, engine='xlrd')
         else:
+            # Handle CSV files
             df = pd.read_csv(file_path)
+        
+        # Basic data validation
+        if df.empty:
+            print("Error: File contains no data")
+            return None
+            
+        if len(df.columns) < 2:
+            print("Error: File must contain at least 2 columns (companies and features)")
+            return None
+            
+        print(f"Successfully loaded data: {len(df)} rows, {len(df.columns)} columns")
         return df
+        
     except Exception as e:
         print(f"Error loading data: {e}")
+        print(f"File path: {file_path}")
+        print(f"File extension: {file_path.split('.')[-1] if '.' in file_path else 'unknown'}")
         return None
 
 def analyze_data_completeness(df):
@@ -196,23 +222,33 @@ def upload():
             return redirect(request.url)
         
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-            
-            # Load and analyze data
-            df = load_data(file_path)
-            if df is not None:
-                current_data = df
-                data_groups, _ = analyze_data_completeness(df)
-                session['data_loaded'] = True
-                flash(f'File {filename} uploaded successfully! Data loaded with {len(df)} companies and {len(df.columns)} features.')
-                return redirect(url_for('analysis'))
-            else:
-                flash('Error loading data from file')
+            try:
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
+                
+                # Load and analyze data
+                df = load_data(file_path)
+                if df is not None:
+                    current_data = df
+                    data_groups, _ = analyze_data_completeness(df)
+                    session['data_loaded'] = True
+                    flash(f'File {filename} uploaded successfully! Data loaded with {len(df)} companies and {len(df.columns)} features.')
+                    return redirect(url_for('analysis'))
+                else:
+                    flash('Error loading data from file. Please check the file format and try again.')
+                    # Clean up the failed file
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    return redirect(request.url)
+            except Exception as e:
+                flash(f'Error processing file: {str(e)}')
+                # Clean up the failed file
+                if 'file_path' in locals() and os.path.exists(file_path):
+                    os.remove(file_path)
                 return redirect(request.url)
         else:
-            flash('Invalid file type. Please upload Excel (.xlsx) or CSV (.csv) files.')
+            flash('Invalid file type. Please upload Excel (.xlsx, .xls) or CSV (.csv) files.')
             return redirect(request.url)
     
     return render_template('upload.html', lang=lang, get_text=get_text, get_language_name=get_language_name)
@@ -279,7 +315,11 @@ def cluster_group(group_name):
         return jsonify({'error': 'Group not found'})
     
     group_data = data_groups[group_name]
-    clustered_data, cluster_centers, features_used = cluster_companies(group_data, group_name)
+    
+    # Get n_clusters from query parameters
+    n_clusters = request.args.get('n_clusters', 3, type=int)
+    
+    clustered_data, cluster_centers, features_used = cluster_companies(group_data, group_name, n_clusters)
     
     if clustered_data is None:
         return jsonify({'error': features_used})
@@ -287,11 +327,11 @@ def cluster_group(group_name):
     # Prepare data for visualization
     cluster_summary = []
     for cluster_id in range(len(cluster_centers)):
-        cluster_companies = clustered_data[clustered_data['cluster'] == cluster_id]
+        companies_in_cluster = clustered_data[clustered_data['cluster'] == cluster_id]
         cluster_summary.append({
             'cluster_id': cluster_id,
-            'company_count': len(cluster_companies),
-            'companies': cluster_companies.index.tolist()
+            'company_count': len(companies_in_cluster),
+            'companies': companies_in_cluster.index.tolist()
         })
     
     return jsonify({

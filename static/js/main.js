@@ -405,6 +405,21 @@ const ChartUtils = {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
+    // Debug: Check if buttons are clickable
+    const buttons = document.querySelectorAll('.btn, a[href]');
+    console.log('Found buttons/links:', buttons.length);
+    
+    buttons.forEach((button, index) => {
+        console.log(`Button ${index}:`, button.tagName, button.href || button.textContent);
+        
+        // Add click event listener for debugging
+        button.addEventListener('click', function(e) {
+            console.log('Button clicked:', this.tagName, this.href || this.textContent);
+        });
+    });
+    
     // Add fade-in animation to cards
     const cards = document.querySelectorAll('.card');
     cards.forEach((card, index) => {
